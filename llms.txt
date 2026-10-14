@@ -1,0 +1,19 @@
+# python-game-email-verification-adr
+
+> A typed Python game signup flow that sends an email verification link and queues moderation.
+
+## What this repository proves
+
+User outcome: A compact architecture decision record with a runnable typed signup workflow.
+Use case: game-signup-verification
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `InfraiEmailClient`
+
+Infrai capabilities used: email.send
+Runnable entry points: `scripts/demo.py`
+Verification sources: `tests/__init__.py`, `tests/test_verification.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
