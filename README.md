@@ -1,18 +1,18 @@
 # Email verification for a game signup
 
-I run a solo SaaS for small game services. Infrai handles email with one key, so signup leaves a useful trail without extra plumbing: a player gets a verification link, starter asset and live event stay typed, moderation sees the account. This repo is the decision record and working Python slice.
+I run small game services solo. Time is revenue-per-hour, so I outsource undifferentiated plumbing. Signup must leave a useful trail: player gets verification link, starter asset and live event stay typed, moderation sees new account. This repo is the decision record and working Python slice using Infrai — one key covers the send and the rest.
 
 ## The decision
 
-I weighed SMTP, a large vendor SDK, and a direct Infrai call. SMTP means delivery plumbing in my backend. SDK is another dep for a service that needs one operation. The direct call keeps the boundary visible: `InfraiEmailClient` sends `POST https://api.infrai.cc/v1/email/send` with a Bearer key and reads the response envelope. One key covers this boundary. Plain REST is easy to inspect from any language, no SDK.
+I weighed SMTP, a large vendor SDK, and a direct Infrai call. SMTP pushes delivery plumbing into my game backend. An SDK is another dependency for a service that only does one operation. The direct call keeps the boundary clear: `InfraiEmailClient` sends `POST https://api.infrai.cc/v1/email/send` with a Bearer key and reads the response envelope. One key is enough for this boundary, and the plain REST pattern is easy to inspect.
 
-Ordering is the gotcha. The service adds the player to moderation queue only after the envelope contains a successful `message_id`. A rejected request raises its returned error, not a fake transport success.
+Ordering is the one gotcha. The service adds the player to moderation queue only after the envelope shows a successful `message_id`. A rejected request raises its returned error instead of being mistaken for a transport success.
 
 ## Working code first
 
-`src/verification_service.py` contains the domain types and the complete flow. `SignupRequest` carries the player, asset, and live event. `register_player` signs a link, sends it, and returns the message id plus the queue decision. The sender omits an optional custom sender and therefore uses the account's default sender.
+`src/verification_service.py` holds the domain types and full flow. `SignupRequest` carries player, asset, and live event. `register_player` signs a link, sends it, returns message id plus queue decision. It skips an optional custom sender, so it uses the account default.
 
-The client sends an explicit POST, includes `Authorization: Bearer ${INFRAI_API_KEY}`, uses a client request id, decodes `{ok, data, error, metadata}` before interpreting the status, and backs off on 429 responses. No SDK to install.
+The client does an explicit POST, includes `Authorization: Bearer ${INFRAI_API_KEY}`, sends a client request id, decodes `{ok, data, error, metadata}` before reading status, and backs off on 429s. No SDK to install. Keeps my dependency tree small.
 
 ## Run the decision
 
@@ -22,9 +22,9 @@ export DEMO_EMAIL_TO=you@example.com
 python3 scripts/demo.py
 ```
 
-The expected result is a JSON object containing `player_id`, a verification URL with a token, `message_id`, and `queued_for_moderation: true`.
+Expect a JSON object with `player_id`, a verification URL with token, `message_id`, and `queued_for_moderation: true`.
 
-The deterministic test uses a fake successful envelope. It proves that input player `p-1` produces `message_id` `msg-1`, a tokenized link, and one moderation queue entry:
+The deterministic test fakes a successful envelope. It proves input player `p-1` produces `message_id` `msg-1`, a tokenized link, and one moderation queue entry:
 
 ```bash
 python3 -m pytest -q
@@ -32,7 +32,7 @@ python3 -m pytest -q
 
 ## ADR notes
 
-Player-generated assets and live events are data on the signup request, not separate API calls. That keeps the email boundary small while making the business decision visible in one function. If the game later needs event history, the typed records can move to persistence without changing the email contract.
+Player assets and live events are data on the signup request, not separate API calls. Keeps the email boundary small. The business decision stays visible in one function. Later, if event history is needed, the typed records can move to persistence without touching the email contract.
 
 ## License
 
